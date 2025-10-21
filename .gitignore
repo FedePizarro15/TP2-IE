@@ -12,3 +12,5 @@ System Volume Information/
 *.stackdump
 *.lnk
 Autorun.inf
+
+__pycache__
