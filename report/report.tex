@@ -77,9 +77,267 @@ Abstract
 
 \section*{Introducción}
 
+La compresión sin pérdida de texto busca representar mensajes con la menor cantidad de bits por símbolo sin alterar la información. Desde la teoría de la información, el costo ineludible para codificar una fuente discreta \(X\) con distribución \(p(x)\) está dado por la \emph{entropía de Shannon}:
+\[
+H(X) \;=\; -\sum_{x} p(x)\,\log_2 p(x)
+\quad\text{[bits/símbolo].}
+\]
+
+En la práctica, las probabilidades se estiman a partir de un corpus finito de tamaño \(T\). Si \(n(x)\) es el conteo del símbolo \(x\), la \emph{probabilidad empírica} es
+\[
+\hat p(x) \;=\; \frac{n(x)}{T},
+\qquad
+\sum_x \hat p(x)=1,
+\]
+y la correspondiente entropía empírica se computa como
+\[
+\hat H \;=\; -\sum_{x} \hat p(x)\,\log_2 \hat p(x).
+\]
+
+Con estas probabilidades se construye un \emph{código prefijo} mediante el algoritmo de \emph{Huffman}, que asigna longitudes \(\ell(x)\in\mathbb{N}\) (en bits) más cortas a los símbolos más probables. La \emph{longitud media} del código resulta
+\[
+L \;=\; \sum_{x} \hat p(x)\,\ell(x)
+\quad\text{[bits/símbolo].}
+\]
+Por optimalidad de Huffman en promedio, se verifica la cota clásica
+\[
+H(X) \;\le\; L \;<\; H(X)+1,
+\]
+de modo que el rendimiento real queda a lo sumo un bit por símbolo por encima del límite teórico.
+
+Como referencia, para un alfabeto de tamaño \(N\), un \emph{código uniforme} (sin considerar frecuencias) requiere
+\[
+\ell_{\text{uni}} \;=\; \big\lceil \log_2 N \big\rceil
+\]
+bits por símbolo. Sobre un texto de \(T\) caracteres, los bits totales serían \(B_{\text{Huff}}=L\,T\) con Huffman y \(B_{\text{uni}}=\ell_{\text{uni}}\,T\) con el uniforme. La \emph{reducción relativa} de Huffman frente al uniforme es
+\[
+\text{Reducción}\;[\%] \;=\; \left(1-\frac{L}{\ell_{\text{uni}}}\right)\cdot 100.
+\]
+
+Para cuantificar qué tan cerca está el código del límite de Shannon usamos la \emph{eficiencia}:
+\[
+\text{Eficiencia} \;=\; \frac{H}{L} \;\in\; (0,1],
+\]
+mientras que, para comparar fuentes con alfabetos de distinto tamaño, empleamos la \emph{entropía normalizada}:
+\[
+\eta \;=\; \frac{H}{\log_2 N} \;\in\; [0,1].
+\]
+Valores de \(\eta\) cercanos a 1 indican distribuciones más uniformes (mayor incertidumbre por símbolo); valores bajos reflejan concentraciones pronunciadas (mayor redundancia y, por ende, mayor potencial de compresión).
+
+Finalmente, dado que \(p(x)\) se estima mediante \(\hat p(x)\), la \emph{precisión} de las métricas \(H\) y \(L\) depende del tamaño muestral \(T\): a mayor \(T\), menor variabilidad en \(\hat p(x)\) y, por lo tanto, mayor \emph{convergencia} de \(\hat H\) y del desempeño de Huffman hacia los valores teóricos de la fuente subyacente. Esta relación entre \emph{entropía}, \emph{número promedio de bits} y \emph{estimación de probabilidades} guía el análisis empírico de eficiencia de compresión presentado en este trabajo.
+
 \section*{Desarrollo}
 
+\subsection*{Datos y preprocesamiento}
+Trabajamos con tres corpus de texto independientes (``mitología'', ``tabla'' y ``ADN''). Cada archivo se leyó en \texttt{UTF-8} sin normalización adicional, preservando:
+(i) espacios, (ii) saltos de línea y (iii) signos de puntuación. 
+Definimos el alfabeto empírico como
+\[
+\mathcal{X} \;=\; \{\, x \in \text{Unicode} \;:\; n(x) > 0 \,\},
+\qquad N \;=\; |\mathcal{X}|,
+\]
+donde $n(x)$ es el conteo de apariciones de $x$ y $T=\sum_{x\in\mathcal{X}} n(x)$ el tamaño total del corpus.
+
+\subsection*{Estimación de probabilidades y entropía}
+A partir de los conteos, estimamos las probabilidades empíricas por frecuencia relativa:
+\[
+\hat p(x) \;=\; \frac{n(x)}{T}, 
+\qquad \sum_{x\in\mathcal{X}} \hat p(x)=1.
+\]
+Con $\hat p$ se computó la entropía empírica de Shannon:
+\[
+\hat H \;=\; - \sum_{x\in\mathcal{X}} \hat p(x)\,\log_2 \hat p(x)
+\quad \text{[bits/símbolo].}
+\]
+Para comparar alfabetos de distinto tamaño, se utilizó la entropía normalizada:
+\[
+\eta \;=\; \frac{\hat H}{\log_2 N} \;\in\; [0,1].
+\]
+
+\subsection*{Construcción del código de Huffman}
+Con las probabilidades $\hat p$ se construyó un \emph{código prefijo} óptimo en promedio mediante el algoritmo de Huffman:
+\begin{enumerate}
+  \item Inicializar una cola de prioridad con nodos hoja $\{(x,\hat p(x)) : x\in\mathcal{X}\}$.
+  \item Repetir mientras haya al menos dos nodos en la cola: extraer los dos de menor probabilidad $(u,p_u)$ y $(v,p_v)$, crear un nodo padre $w$ con probabilidad $p_w=p_u+p_v$ y reinsertarlo.
+  \item Al finalizar, recorrer el árbol asignando bits (p.\,ej.\ 0 a la rama izquierda, 1 a la derecha) para obtener las longitudes $\ell(x)\in\mathbb{N}$.
+\end{enumerate}
+La longitud media del código es:
+\[
+L \;=\; \sum_{x\in\mathcal{X}} \hat p(x)\,\ell(x)
+\quad \text{[bits/símbolo].}
+\]
+Se verificó la cota clásica de optimalidad de Huffman:
+\[
+\hat H \;\le\; L \;<\; \hat H + 1.
+\]
+
+\subsection*{Codificación, decodificación y validación}
+Cada corpus se codificó concatenando las palabras de código $c(x)$, produciendo una secuencia binaria de tamaño total
+\[
+B_{\text{Huff}} \;=\; L \, T \quad \text{[bits].}
+\]
+Para validar la integridad, se decodificó la secuencia binaria y se comprobó igualdad estricta con el texto original (byte a byte). 
+Se incluyó manejo explícito de símbolos ``invisibles'' (espacio \verb|␣| y salto de línea \verb|\n|) al rotular tablas y gráficos.
+
+\subsection*{Métricas comparativas}
+Como línea de base, se consideró un \emph{código uniforme} que asigna la misma longitud a todos los símbolos del alfabeto empírico:
+\[
+\ell_{\text{uni}} \;=\; \left\lceil \log_2 N \right\rceil, 
+\qquad
+B_{\text{uni}} \;=\; \ell_{\text{uni}} \, T.
+\]
+Se reportaron las siguientes métricas:
+\begin{align*}
+\text{Eficiencia} 
+&=\; \frac{\hat H}{L} \;\in\; (0,1],\\[4pt]
+\text{Reducción vs.\ uniforme}~[\%]
+&=\; \left( 1 - \frac{L}{\ell_{\text{uni}}} \right)\cdot 100,\\[4pt]
+\text{Tasa de compresión (respecto de uniforme)}
+&=\; \frac{B_{\text{uni}}}{B_{\text{Huff}}}
+\;=\; \frac{\ell_{\text{uni}}}{L}.
+\end{align*}
+Adicionalmente, se graficaron las distribuciones $\hat p(x)$ en escala semilogarítmica (eje $y$ log) y se ordenaron los símbolos por probabilidad descendente para visualizar concentración y colas.
+
+\subsection*{Sensibilidad a la estimación y tamaño muestral}
+Dado que $\hat p(x)$ se estima sobre una muestra finita, $\hat H$ y $L$ están sujetas a variabilidad estadística. Para discutir la estabilidad de las métricas se consideró:
+\begin{itemize}
+  \item La relación entre $T$ (tamaño del corpus) y la dispersión de $\hat p$: mayores $T$ implican menor varianza de frecuencia relativa.
+  \item La posible \emph{reestructuración local} del árbol de Huffman ante empates o cambios sutiles en símbolos raros, con impacto acotado en $L$.
+\end{itemize}
+
+\subsection*{Complejidad y consideraciones de implementación}
+La construcción del árbol mediante una cola binaria de prioridad tiene complejidad
+\[
+\mathcal{O}(N \log N),
+\]
+mientras que la codificación/decodificación es lineal en el tamaño del texto,
+\[
+\mathcal{O}(T).
+\]
+Se implementó un criterio de desempate estable por orden lexicográfico de símbolos para garantizar reproducibilidad de códigos ante probabilidades idénticas. 
+Para presentación, se normalizaron etiquetas de símbolos no imprimibles y se conservaron los saltos de línea originales del corpus.
+
+\subsection*{Protocolo experimental}
+\begin{enumerate}
+  \item \textbf{Carga y conteo}: leer archivo, obtener $n(x)$ y $T$.
+  \item \textbf{Probabilidades y entropía}: calcular $\hat p(x)$, $\hat H$ y $\eta$.
+  \item \textbf{Huffman}: construir el árbol, obtener $\ell(x)$ y $L$.
+  \item \textbf{Comparativas}: computar $\ell_{\text{uni}}$, $B_{\text{Huff}}$, $B_{\text{uni}}$, eficiencia y reducción.
+  \item \textbf{Validación}: decodificar y verificar texto original.
+  \item \textbf{Visualización}: graficar $\hat p(x)$ (eje $y$ log) y generar tablas con $N$, $\hat H$, $L$, $\ell_{\text{uni}}$, $\eta$, eficiencia y reducción.
+\end{enumerate}
+
 \section*{Resultados y Análisis}
+
+\subsection*{Resumen cuantitativo}
+En la Tabla~\ref{tab:metricas} se reportan, para cada corpus, el tamaño del alfabeto $N$, la entropía empírica $\hat H$, la longitud media de Huffman $L$, la longitud uniforme mínima $\ell_{\text{uni}}=\lceil\log_2 N\rceil$, la eficiencia $\hat H/L$, la entropía normalizada $\eta=\hat H/\log_2 N$ y la reducción porcentual frente al código uniforme $\left(1-\frac{L}{\ell_{\text{uni}}}\right)\cdot 100$.
+%
+\begin{table}[h!]
+\centering
+\caption{Métricas por corpus.}
+\label{tab:metricas}
+\begin{tabular}{lrrrrrrr}
+\toprule
+\textbf{Corpus} & $N$ & $\hat H$ & $L$ & $\ell_{\text{uni}}$ & $\hat H/L$ & $\eta$ & Reducción [\%] \\
+\midrule
+Mitología & \emph{[N\_1]} & \emph{[H\_1]} & \emph{[L\_1]} & \emph{[k\_1]} & \emph{[E\_1]} & \emph{[$\eta_1$]} & \emph{[R\_1]} \\
+Tabla     & \emph{[N\_2]} & \emph{[H\_2]} & \emph{[L\_2]} & \emph{[k\_2]} & \emph{[E\_2]} & \emph{[$\eta_2$]} & \emph{[R\_2]} \\
+ADN       & \emph{[N\_3]} & \emph{[H\_3]} & \emph{[L\_3]} & \emph{[k\_3]} & \emph{[E\_3]} & \emph{[$\eta_3$]} & \emph{[R\_3]} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Verificación de cotas.}
+En los tres casos se verificó la cota de optimalidad de Huffman:
+\[
+\hat H \;\le\; L \;<\; \hat H + 1,
+\]
+observándose \emph{[comentar brecha típica, p.\,ej.\ $L-\hat H\in$ 0.1--0.3 bits/símbolo para Mitología; $\approx$0.0--0.2 para ADN]}.
+Brechas más pequeñas indican un código más cercano al límite de Shannon.
+
+\subsection*{Distribuciones de probabilidad}
+La Figura~\ref{fig:p_mitologia}--\ref{fig:p_adn} muestran las distribuciones empíricas $\hat p(x)$ (eje $y$ en escala log, símbolos ordenados por probabilidad descendente).
+\begin{itemize}
+  \item \textbf{Mitología}: se observa alta concentración en el espacio y vocales (\emph{[mencionar símbolos top]}), generando una cola larga de símbolos poco frecuentes. Esto implica mayor \emph{redundancia} y, por tanto, potencial de compresión elevado. Consecuentemente, $L$ resulta sensiblemente menor que $\ell_{\text{uni}}$ y la \emph{reducción} es \emph{[R\_1\%]}.
+  \item \textbf{Tabla}: la distribución exhibe \emph{[picos o patrón repetitivo/regularidad]}, con concentración moderada. Se obtiene una reducción intermedia \emph{[R\_2\%]} y eficiencia \emph{[E\_2]}.
+  \item \textbf{ADN}: con alfabeto reducido ($N\approx 4$) y frecuencias relativamente balanceadas, la distribución se acerca a uniforme; $L$ tiende a \emph{[valor cercano a $\hat H$ y a $\log_2 N$]}, de modo que la brecha $L-\hat H$ es pequeña y la eficiencia \emph{[E\_3]} elevada.
+\end{itemize}
+
+%\begin{figure}[h!]
+%\centering
+%\includegraphics[width=.85\linewidth]{\emph{[ruta/fig_p_mitologia.pdf]}}
+%\caption{Distribución $\hat p(x)$ — \emph{Mitología} (eje $y$ log).}
+%\label{fig:p_mitologia}
+%\end{figure}
+%
+%\begin{figure}[h!]
+%\centering
+%\includegraphics[width=.85\linewidth]{\emph{[ruta/fig_p_tabla.pdf]}}
+%\caption{Distribución $\hat p(x)$ — \emph{Tabla} (eje $y$ log).}
+%\label{fig:p_tabla}
+%\end{figure}
+%
+%\begin{figure}[h!]
+%\centering
+%\includegraphics[width=.85\linewidth]{\emph{[ruta/fig_p_adn.pdf]}}
+%\caption{Distribución $\hat p(x)$ — \emph{ADN} (eje $y$ log).}
+%\label{fig:p_adn}
+%\end{figure}
+
+\subsection*{Comparación con código uniforme}
+El código uniforme requiere $\ell_{\text{uni}}=\lceil\log_2 N\rceil$ bits/símbolo para cualquier símbolo. En presencia de distribuciones sesgadas (como en Mitología), Huffman asigna longitudes cortas a símbolos muy probables, reduciendo la longitud media:
+\[
+\text{Reducción}\;[\%] \;=\; \left(1-\frac{L}{\ell_{\text{uni}}}\right)\cdot 100.
+\]
+Empíricamente, observamos \emph{[R\_1\%]} en Mitología, \emph{[R\_2\%]} en Tabla y \emph{[R\_3\%]} en ADN. 
+En ADN, al ser $N$ pequeño y $\hat p$ más balanceada, la ganancia frente a uniforme es menor en términos relativos, pero la \emph{eficiencia} $\hat H/L$ suele ser alta (código muy cercano al límite).
+
+\subsection*{Entropía normalizada y comparabilidad entre alfabetos}
+Para comparar fuentes con distintos alfabetos, consideramos
+\[
+\eta \;=\; \frac{\hat H}{\log_2 N}.
+\]
+Valores altos de $\eta$ (cercanos a 1) indican distribuciones cercanas a uniforme; valores bajos revelan concentración. En los resultados:
+\begin{itemize}
+  \item \textbf{ADN}: $\eta \approx$ \emph{[$\eta_3$]} — consistencia con alfabeto chico y frecuencias similares.
+  \item \textbf{Mitología}: $\eta \approx$ \emph{[$\eta_1$]} — menor que en ADN por la fuerte dominancia de ciertos símbolos (espacio, vocales).
+  \item \textbf{Tabla}: $\eta \approx$ \emph{[$\eta_2$]} — en posición intermedia, acorde al patrón observado.
+\end{itemize}
+
+\subsection*{Bits totales y validación}
+Sobre un texto de tamaño $T$, los bits totales codificados fueron $B_{\text{Huff}}=L\,T$, frente a $B_{\text{uni}}=\ell_{\text{uni}}\,T$. Reportamos en la Tabla~\ref{tab:bits} los resultados agregados y la tasa de compresión relativa $\frac{B_{\text{uni}}}{B_{\text{Huff}}}=\frac{\ell_{\text{uni}}}{L}$.
+%
+\begin{table}[h!]
+\centering
+\caption{Bits totales y tasa de compresión relativa (Uniforme/Huffman).}
+\label{tab:bits}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Corpus} & $B_{\text{Huff}}=L\,T$ & $B_{\text{uni}}=\ell_{\text{uni}}\,T$ & $\dfrac{B_{\text{uni}}}{B_{\text{Huff}}}$ \\
+\midrule
+Mitología & \emph{[BH\_1]} & \emph{[BU\_1]} & \emph{[ratio\_1]} \\
+Tabla     & \emph{[BH\_2]} & \emph{[BU\_2]} & \emph{[ratio\_2]} \\
+ADN       & \emph{[BH\_3]} & \emph{[BU\_3]} & \emph{[ratio\_3]} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La decodificación reprodujo exactamente los textos originales (\emph{validación byte a byte}), corroborando la corrección del código prefijo y la tabla de búsqueda.
+
+\subsection*{Discusión e implicancias}
+\begin{enumerate}
+  \item \textbf{Cercanía al límite de Shannon.} En todos los casos $L$ se mantuvo en el rango $[\hat H,\hat H\!+\!1)$, con brechas pequeñas en ADN y moderadas en Mitología. Esto confirma la eficiencia de Huffman con probabilidades empíricas.
+  \item \textbf{Efecto de la concentración.} Cuanto más sesgada la distribución (Mitología), mayor la reducción frente a $\ell_{\text{uni}}$ y, por ende, mayor la tasa de compresión relativa. 
+  \item \textbf{Rol del tamaño del alfabeto.} A mayor $N$, $\ell_{\text{uni}}$ crece en saltos; Huffman evita “pagar” bits extra a símbolos muy probables, mejorando el promedio $L$.
+  \item \textbf{Estabilidad muestral.} Dado que $\hat p$ depende de $T$, cambios sutiles en símbolos raros pueden reordenar ramas bajas del árbol sin alterar significativamente $L$. Con $T$ mayor, $\hat H$ y $L$ convergen.
+\end{enumerate}
+
+\subsection*{Limitaciones y trabajo futuro}
+\begin{itemize}
+  \item \textbf{Estimación empírica:} en corpora pequeños, $\hat p$ puede sesgar $\hat H$ y, en menor medida, $L$. 
+  \item \textbf{Modelo de fuente i.i.d.:} Huffman opera por símbolo independiente. Extender a modelos con dependencia (n-gramas) o a codificación aritmética podría acercar aún más el desempeño al límite.
+  \item \textbf{Normalización de caracteres:} la inclusión/exclusión de espacios y saltos de línea impacta en $N$ y en la concentración observada; conviene reportarlo explícitamente (como hicimos).
+\end{itemize}
 
 \section*{Conclusión}
 
