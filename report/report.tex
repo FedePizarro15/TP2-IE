@@ -45,7 +45,7 @@
     \renewcommand{\footrulewidth}{1pt}
     }
     
-    \fancyhead[L]{\textit{Título}}
+    \fancyhead[L]{\textit{Codificación de Huffman}}
     \fancyhead[R]{\textit{Orozco, Pizarro}}
     
     \fancyfoot[C]{Página~\thepage}
@@ -53,7 +53,7 @@
     \renewcommand{\headrulewidth}{1pt}
     \renewcommand{\footrulewidth}{1pt}
     
-  	\title{Título\\[2ex]\large Trabajo Práctico N°2 - Grupo 13\\[2ex]Inferencia y Estimación (I206)}
+  	\title{Codificación de Huffman\\[2ex]\large Trabajo Práctico N°2 - Grupo 13\\[2ex]Inferencia y Estimación (I206)}
     \author{Alejandro Orozco Lopez, Federico Pizarro Dal Maso\\[1ex]\small{36625 - \href{mailto:aorozcolopez@udesa.edu.ar}{aorozcolopez@udesa.edu.ar}, 36584 - \href{mailto:fpizarrodalmaso@udesa.edu.ar}{fpizarrodalmaso@udesa.edu.ar}}}
     \date{Fecha}
     
@@ -77,13 +77,12 @@ Abstract
 
 \section*{Introducción}
 
-La compresión sin pérdida de texto busca representar mensajes con la menor cantidad de bits por símbolo sin alterar la información. Desde la teoría de la información, el costo ineludible para codificar una fuente discreta \(X\) con distribución \(p(x)\) está dado por la \emph{entropía de Shannon}:
+La compresión sin pérdida de texto busca representar mensajes con la menor cantidad de bits por símbolo sin alterar la información. Desde la teoría de la información, el costo ineludible para codificar una fuente discreta \(X\) con distribución \(p(x)\) está dado por la entropía:
 \[
 H(X) \;=\; -\sum_{x} p(x)\,\log_2 p(x)
-\quad\text{[bits/símbolo].}
 \]
 
-En la práctica, las probabilidades se estiman a partir de un corpus finito de tamaño \(T\). Si \(n(x)\) es el conteo del símbolo \(x\), la \emph{probabilidad empírica} es
+En la práctica, las probabilidades se estiman a partir de un corpus finito de tamaño \(T\). Si \(n(x)\) es el conteo del símbolo \(x\), la probabilidad empírica es
 \[
 \hat p(x) \;=\; \frac{n(x)}{T},
 \qquad
@@ -96,8 +95,7 @@ y la correspondiente entropía empírica se computa como
 
 Con estas probabilidades se construye un \emph{código prefijo} mediante el algoritmo de \emph{Huffman}, que asigna longitudes \(\ell(x)\in\mathbb{N}\) (en bits) más cortas a los símbolos más probables. La \emph{longitud media} del código resulta
 \[
-L \;=\; \sum_{x} \hat p(x)\,\ell(x)
-\quad\text{[bits/símbolo].}
+L \;=\; \sum_{x} \hat p(x)\,\ell(x).
 \]
 Por optimalidad de Huffman en promedio, se verifica la cota clásica
 \[
@@ -129,8 +127,7 @@ Finalmente, dado que \(p(x)\) se estima mediante \(\hat p(x)\), la \emph{precisi
 \section*{Desarrollo}
 
 \subsection*{Datos y preprocesamiento}
-Trabajamos con tres corpus de texto independientes (``mitología'', ``tabla'' y ``ADN''). Cada archivo se leyó en \texttt{UTF-8} sin normalización adicional, preservando:
-(i) espacios, (ii) saltos de línea y (iii) signos de puntuación. 
+Trabajamos con tres corpus de texto independientes (``mitología'', ``tabla'' y ``ADN''). Cada archivo se leyó en \texttt{UTF-8} sin normalización adicional, preservando: espacios, saltos de línea y signos de puntuación. 
 Definimos el alfabeto empírico como
 \[
 \mathcal{X} \;=\; \{\, x \in \text{Unicode} \;:\; n(x) > 0 \,\},
